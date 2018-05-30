@@ -1,0 +1,101 @@
+---
+title: "Statistical inference with the GSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+```
+
+### Load data
+
+```{r load-data, cache=TRUE}
+load("gss.Rdata")
+```
+
+* * *
+
+## Part 1: Data
+
+According to the NORC, the GSS sample is drawn using an area probability design that randomly selects respondents in households across the United States to take part in the survey. Respondents that become part of the GSS sample are from a mix of urban, suburban, and rural geographic areas.
+
+The target population is adults (18+) living in households in the United States.
+
+Since the samples are reasonably randomized, we could safely assume that the conclusions of this study could be generalized to the whole population.
+
+However, this is an observational study, and not an experiment, hence causality can not be inferred from any correlation found between any of the variables. And since this was not an experiment, the question of random assignment would be irrelevant. As for sampling, it seems that it has been sufficiently randomized, as mentioned above, but it can only go as far as enabling the study conclusions to be generalizable.
+
+
+* * *
+
+## Part 2: Research question
+
+I am interested in knowing if there is significant statistical proof of the change in people's opinions about homosexual relationships over the turn of the century. As we all know that it seems that they are becoming more and more acceptable from what we see in the news and social media, but this dataset will provide us with statistical evidence if this is really the case. 
+
+The reason I am interested in this question is because the part of the world where I come from, there is a generally strong opposition to them. I would be interested in knowing if there is a real trend in the people's opinions about this subject, and given the current landscape of how fast influence spreads, this could also serve as a predictor if we should expect any change here as well.
+
+* * *
+
+## Part 3: Exploratory data analysis
+****
+
+We can start with taking a look at how the population's opinions are distributed regarding homosexual relationships.
+
+```{r}
+table(gss$homosex)
+```
+
+Representing the same data visually:
+
+```{r}
+ggplot(data = gss, aes(x = homosex)) + geom_bar()
+```
+
+The proportion of people who consider it unacceptable (Always wrong) and those who don't (Not wrong at all) doesn't seem to reflect what we know of people's current views, as we can see that people who deem it unacceptable are signifantly more than those who don't, so lets compare between people's views before the turn of the 21st century and after. For this we will create another table with only the variables we are interested in, and add another one, that will indicate if the response is from the year 2000 or after, or before.
+
+
+```{r, fig.width=10}
+relevant_data <- gss %>% select(year, homosex) %>% mutate(era = year<2000)
+
+relevant_data$era <- ifelse(relevant_data$era==FALSE, 'post-year 2000', 'pre-year 2000')
+relevant_data$era <- factor(relevant_data$era, levels = c('pre-year 2000', 'post-year 2000'))
+
+ggplot(data = relevant_data, aes(x = homosex)) + geom_bar() + facet_grid(~ era) + theme(axis.text.x = element_text(angle = 90))
+```
+
+We can see that there has been a significant change in proportions from the pre-21st century to post. 
+
+We can also explore how these proportions have been changing over time with a graph. For this purpose I will use the proportions instead of counts, as it is clear from the side by side barplots above that the number of responses in surveys conducted before the year 2000 are significantly higher than after, since the number of years the survey was done, is also significantly higher before.
+
+```{r warning=FALSE}
+propViews_byYear <- with(relevant_data, prop.table(table(homosex, year), 2))
+propViews_byYear <- as.data.frame(propViews_byYear)
+
+ggplot(propViews_byYear, aes(x = year, y = Freq, col = homosex, group = homosex)) + geom_line() + geom_smooth(method = 'lm') + theme(axis.text.x = element_text(angle = 90))
+
+```
+
+The lines show a steady upward trend in proportions of people who consider homosexual relations as 'Not Wrong At All' and a steady downward trend in proportions of people who consider them as 'Always Wrong'. The gaps in the former years in the graphs are due to missing data in those years
+
+Now to present the changes in proportions that we are interested in, i.e. people's opinions before and after the turn of the century.
+
+
+```{r}
+with(relevant_data, prop.table(table(homosex, era), 2))
+```
+
+As we can see, the proportion of people who regarded homosexual relations as 'Always Wrong', has fallen from 71% to 53%, whereas the proportion of people regarding them as 'Not Wrong At All' has risen from 17% to 36% in the sampled population.  
+* * *
+
+## Part 4: Inference
+
