@@ -47,7 +47,6 @@ The reason I am interested in this question is because the part of the world whe
 * * *
 
 ## Part 3: Exploratory data analysis
-****
 
 We can start with taking a look at how the population's opinions are distributed regarding homosexual relationships.
 
@@ -75,7 +74,7 @@ ggplot(data = relevant_data, aes(x = homosex)) + geom_bar() + facet_grid(~ era) 
 
 We can see that there has been a significant change in proportions from the pre-21st century to post. 
 
-We can also explore how these proportions have been changing over time with a graph. For this purpose I will use the proportions instead of counts, as it is clear from the side by side barplots above that the number of responses in surveys conducted before the year 2000 are significantly higher than after, since the number of years the survey was done, is also significantly higher before.
+We can also explore how these proportions have been changing over time with a graph. For this purpose I will use the proportions instead of counts, as it is clear from the side by side barplots above that the number of responses in surveys conducted before the year 2000 are significantly higher than after, since the number of years the survey was done is also significantly higher before.
 
 ```{r warning=FALSE}
 propViews_byYear <- with(relevant_data, prop.table(table(homosex, year), 2))
@@ -98,4 +97,102 @@ As we can see, the proportion of people who regarded homosexual relations as 'Al
 * * *
 
 ## Part 4: Inference
+
+We will conduct inference of difference between proportions of two variables, i.e. both the opinions. The proportion of people who think that homosexual relations are 'Always Wrong' before and after the year 2000, as well as the difference in proportion of people who think that they are 'Not Wrong At All'.
+
+Starting with tests for proportion of people who think they are 'Always Wrong'
+
+#### Homosexual relations 'Always Wrong'
+
+The null hypothesis would be that the true proportion of people who think that homosexual relations are 'Always Wrong' is the same before the year 2000, and after, and the difference observed is merely due to chance, i.e. H0: p.wrong.b42k - p.wrong.aft2k = 0. The alternate hypothesis would be that there is indeed a difference between the proportion of people who think that homosexual relations are 'Always Wrong', i.e. Ha: p.wrong.b42k - p.wrong.aft2k != 0
+
+Conditions: We have already assumed that the sample is random, so the observations can be treated as independant. 
+
+Furthermore, for the success failure test, each variable has at least 10 observations in the sample, (16790 successes and 21326 failures pre-year 2000, and 4811 successes and 14891 failures post-year 2000) and even if we take the pooled proportion for the hypothesis test, the expected number is very well above 10. This means that we can assume normality of the sampling distribution and hence conduct a simple hypothesis test based on the Central Limit Theorem, i.e. we will simply extract the probability of getting this difference in proportion or higher, assuming that there is actually no difference. After that we will also extract a confidence interval for the difference in proportion.
+
+
+```{r}
+relevant_props <- with(relevant_data, prop.table(table(homosex, era), 2))
+relevant_props <- as.data.frame(relevant_props)
+
+n_pre2k <- nrow(subset(relevant_data, era == 'pre-year 2000'))
+n_post2k <- nrow(subset(relevant_data, era == 'post-year 2000'))
+n_awpre2k <- nrow(subset(relevant_data, era == 'pre-year 2000' & homosex=='Always Wrong'))
+n_awpost2k <- nrow(subset(relevant_data, era == 'post-year 2000' & homosex=='Always Wrong'))
+
+p.wrong.aft2k <- relevant_props[relevant_props$homosex=='Always Wrong' & relevant_props$era=='post-year 2000',3]
+p.wrong.b42k <- relevant_props[relevant_props$homosex=='Always Wrong' & relevant_props$era=='pre-year 2000',3]
+
+point_est_aw <- p.wrong.b42k - p.wrong.aft2k
+
+p_hat_aw <- (n_awpre2k+n_awpost2k)/nrow(relevant_data)
+
+SEaw <- sqrt(((p_hat_aw*(1-p_hat_aw))/n_pre2k)+((p_hat_aw*(1-p_hat_aw))/n_post2k))
+
+z_score_aw <- point_est_aw/SEaw
+z_score_aw
+```
+
+As we can see here the z_score is pretty high, which would yield an almost zero probability of getting a sample of this size from the American population whose proportion of people who regard homosexual relations as 'Always Wrong' will differ from previous samples so much, had there been no difference in the actual proportion of people with such an opinion. In other words, the difference between the two proportions is too large to plausibly be due to chance, hence we will reject the null hypothesis that there has been no change in the proportion of people who believe that homosexual relations are 'Always Wrong', in favor of the alternate hypothesis, which is that there is indeed a difference in proportion of people with that opinion before, and after the turn of the century. We can get the p-value just for the sake of completeness:
+
+
+```{r}
+pnorm(z_score_aw, SEaw, lower.tail = F)*2
+```
+
+We can also construct a confidence interval for the difference between the two proportions (the proportion of people considering homesexual relationships as 'Always Wrong' before, and after the year 2000). We know that the point estimate for the difference is around 18%, i.e, the proportion was higher in the past.
+
+```{r}
+SEaw_ci <- sqrt(((p.wrong.b42k*(1 - p.wrong.b42k))/n_pre2k)+((p.wrong.aft2k*(1 - p.wrong.aft2k))/n_post2k))
+
+point_est_aw + c(-1, 1)*qnorm(0.975)*SEaw_ci
+```
+
+So we are 95% confident that the proportion of people who consider homosexual relations to be 'Always Wrong' was 17% to 19% higher in the past than it is now.
+
+
+#### Homosexual relations 'Not Wrong At All'
+
+The null hypothesis would be that the true proportion of people who think that homosexual relations are 'Not Wrong At All' is the same before the year 2000, and after, and the difference observed is merely due to chance, i.e. H0: p.notwrong.b42k - p.notwrong.aft2k = 0. The alternate hypothesis would be that there is indeed a difference between the proportion of people who think that homosexual relatins are 'Not Wrong At All', i.e. Ha: p.notwrong.b42k - p.notwrong.aft2k != 0
+
+Conditions: We have already assumed that the sample is random, so the observations can be treated as independant.
+
+Furthermore, for the success failure test, each variable has at least well above 10 observations in the sample, and even if we take the pooled proportion for the hypothesis test, the expected number is very well above 10. This means that we can assume normality of the sampling distribution and hence conduct a simple hypothesis test based on the Central Limit Theorem, i.e. we will simply extract the probability of getting this difference in proportion or higher, assuming that there is actually no difference. After that we will also extract a confidence interval for the difference in proportion.
+
+
+```{r}
+n_nwpre2k <- nrow(subset(relevant_data, era == 'pre-year 2000' & homosex=='Not Wrong At All'))
+n_nwpost2k <- nrow(subset(relevant_data, era == 'post-year 2000' & homosex=='Not Wrong At All'))
+
+p.notwrong.aft2k <- relevant_props[relevant_props$homosex=='Not Wrong At All' & relevant_props$era=='post-year 2000',3]
+p.notwrong.b42k <- relevant_props[relevant_props$homosex=='Not Wrong At All' & relevant_props$era=='pre-year 2000',3]
+
+point_est_nw <- p.notwrong.b42k - p.notwrong.aft2k
+
+p_hat_nw <- (n_nwpre2k+n_nwpost2k)/nrow(relevant_data)
+
+SEnw <- sqrt(((p_hat_nw*(1-p_hat_nw))/n_pre2k)+((p_hat_nw*(1-p_hat_nw))/n_post2k))
+
+z_score_nw <- point_est_nw/SEnw
+z_score_nw
+
+```
+
+As we can see again, the z-score is pretty high in the negative side, which would mean that there is almost zero probability of obtaining a random sample from the American population whose proportion of people who consider homosexual relations to be 'Not Wrong At All' would differ from previous samples so much, had there been no difference in the actual proportion of people with such an opinion. In other words, the difference between the two proportions is too large to plausibly be due to chance alone, hence we will reject the null hypothesis that there has been no change in the proportion of people who believe that homosexual relations are 'Not Wrong At All', in favor of the alternate hypothesis, which is that there is indeed a difference in proportion of people with that opinion before, and after the turn of the century We will also get the p-value for the sake of completeness: 
+
+```{r}
+pnorm(z_score_aw, SEaw, lower.tail = F)*2
+```
+
+We can also construct a confidence interval for the difference between the two proportions (the proportion of people considering homesexual relationships as 'Always Wrong' before, and after the year 2000). We know that the point estimate for the difference is around -18%, i.e. the proportion is higher than it was in the past.
+
+```{r}
+SEnw_ci <- sqrt(((p.notwrong.b42k*(1 - p.notwrong.b42k))/n_pre2k)+((p.notwrong.aft2k*(1 - p.notwrong.aft2k))/n_post2k))
+
+point_est_nw + c(-1, 1)*qnorm(0.975)*SEnw_ci
+```
+
+So we are 95% confident that the proportion of people who consider homosexual relations to be 'Not Wrong At All' has increased by around 18% to 19%.
+
+All this goes to show that there has indeed been a statistically significant change in the proportion of people opposing, and of those not opposing homosexual relations over time. 
 
